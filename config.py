@@ -21,7 +21,7 @@ SITES = [
         "nom": "Castorama",
         "url": "https://www.castorama.fr/climatiseur-portasplit-midea-reversible-3500w/8431312260509_CAFR.prd",
         "method": "direct",
-        "parser": "parse_jsonld",
+        "parser": "parse_castorama",  # JSON-LD InStock code en dur : on lit l'etat du bouton panier
         "enabled": True,
     },
     {

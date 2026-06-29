@@ -195,10 +195,40 @@ def parse_amazon(html, site):
     return {"disponible": None, "prix": price, "erreur": "etat Amazon indetermine"}
 
 
+def parse_castorama(html, site):
+    """
+    Parser specifique Castorama.
+
+    Le JSON-LD de Castorama laisse "availability": InStock code en dur, meme quand
+    le produit est epuise : il est donc inexploitable pour le stock (mais bon pour le prix).
+    Le vrai signal est le bouton d'ajout au panier du produit, rendu cote serveur :
+      - bouton present et NON desactive  -> disponible
+      - bouton present et "disabled"     -> indisponible
+    On cible le <button> dont l'aria-label commence par "Ajouter au panier".
+    """
+    # Prix : le JSON-LD reste fiable pour ce champ
+    _, price = _extract_jsonld_offers(html)
+
+    # Bouton principal, identifie par son aria-label produit
+    m = re.search(r'<button([^>]*aria-label="\s*ajouter au panier[^"]*"[^>]*)>',
+                  html, re.IGNORECASE)
+    attrs_list = [m.group(1)] if m else re.findall(
+        r'<button([^>]*)>\s*ajouter au panier\s*</button>', html, re.IGNORECASE)
+
+    if not attrs_list:
+        return {"disponible": None, "prix": price,
+                "erreur": "bouton panier introuvable"}
+
+    # Disponible si au moins un bouton d'ajout n'est pas desactive
+    dispo = any("disabled" not in a.lower() for a in attrs_list)
+    return {"disponible": dispo, "prix": price, "erreur": None}
+
+
 # Table de routage des parsers
 PARSERS = {
     "parse_jsonld": parse_jsonld,
     "parse_amazon": parse_amazon,
+    "parse_castorama": parse_castorama,
 }
 
 
