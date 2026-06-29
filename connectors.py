@@ -317,12 +317,69 @@ def parse_darty(html, site):
     return {"disponible": None, "prix": price, "erreur": "disponibilite Darty introuvable"}
 
 
+def parse_woocommerce(html, site):
+    """
+    Parser generique WooCommerce (utilise pour Optimea).
+
+    Signaux par ordre de fiabilite (tous rendus cote serveur par WooCommerce) :
+      1. <p class="stock out-of-stock|in-stock"> ...
+      2. bouton 'single_add_to_cart_button' present et non desactive
+      3. texte explicite "rupture de stock" / "stock epuise"
+      4. availability microdata puis JSON-LD
+    Prix : .woocommerce-Price-amount sinon JSON-LD.
+    Renvoie None si aucun signal (ex: page de maintenance) -> jamais d'alerte.
+    """
+    low = html.lower()
+
+    # Prix
+    _, price = _extract_jsonld_offers(html)
+    if price is None:
+        mp = re.search(r'woocommerce-Price-amount[^>]*>[^0-9]*([0-9][0-9 ., ]*)', html)
+        if mp:
+            price = _to_float(re.sub(r"[^0-9.,]", "", mp.group(1)))
+
+    # 1. Classes de stock WooCommerce
+    if re.search(r'class="[^"]*\bout-of-stock\b[^"]*"', html, re.IGNORECASE):
+        return {"disponible": False, "prix": price, "erreur": None}
+    if re.search(r'class="[^"]*\bin-stock\b[^"]*"', html, re.IGNORECASE):
+        return {"disponible": True, "prix": price, "erreur": None}
+
+    # 2. Bouton d'ajout au panier WooCommerce
+    btn = re.search(r'<button[^>]*single_add_to_cart_button[^>]*>', html, re.IGNORECASE)
+    if btn:
+        return {"disponible": "disabled" not in btn.group(0).lower(),
+                "prix": price, "erreur": None}
+
+    # 3. Texte explicite
+    if "rupture de stock" in low or "stock epuise" in low or "stock épuisé" in low:
+        return {"disponible": False, "prix": price, "erreur": None}
+
+    # 4. Microdata puis JSON-LD availability
+    av = None
+    tag = re.search(r'<(?:link|meta)[^>]*itemprop="availability"[^>]*>', html, re.IGNORECASE)
+    if tag:
+        v = re.search(r'schema\.org/(\w+)', tag.group(0))
+        av = v.group(1).lower() if v else None
+    if av is None:
+        a2, _ = _extract_jsonld_offers(html)
+        if a2:
+            av = a2.lower().rstrip("/").split("/")[-1]
+    if av in _IN_STOCK:
+        return {"disponible": True, "prix": price, "erreur": None}
+    if av in _OUT_STOCK:
+        return {"disponible": False, "prix": price, "erreur": None}
+
+    return {"disponible": None, "prix": price,
+            "erreur": "signal stock WooCommerce introuvable (maintenance ?)"}
+
+
 # Table de routage des parsers
 PARSERS = {
     "parse_jsonld": parse_jsonld,
     "parse_amazon": parse_amazon,
     "parse_castorama": parse_castorama,
     "parse_darty": parse_darty,
+    "parse_woocommerce": parse_woocommerce,
 }
 
 
