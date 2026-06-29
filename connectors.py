@@ -227,11 +227,47 @@ def parse_castorama(html, site):
     return {"disponible": dispo, "prix": price, "erreur": None}
 
 
+def parse_darty(html, site):
+    """
+    Parser specifique Darty.
+
+    Darty n'expose pas la disponibilite en JSON-LD mais en microdata schema.org
+    (balise <link itemprop="availability" href="https://schema.org/OutOfStock">).
+    On lit ce champ ; repli sur le marqueur tagcommander 'product_stock'.
+    """
+    # Prix : JSON-LD generique sinon microdata itemprop="price"
+    _, price = _extract_jsonld_offers(html)
+    if price is None:
+        mp = re.search(r'itemprop="price"[^>]*content="([0-9.,]+)"', html, re.IGNORECASE)
+        if mp:
+            price = _to_float(mp.group(1))
+
+    # 1) Signal principal : microdata availability (ordre des attributs indifferent)
+    tag = re.search(r'<(?:link|meta)[^>]*itemprop="availability"[^>]*>', html, re.IGNORECASE)
+    if tag:
+        val = re.search(r'schema\.org/(\w+)', tag.group(0))
+        if val:
+            v = val.group(1).lower()
+            if v in _IN_STOCK:
+                return {"disponible": True, "prix": price, "erreur": None}
+            if v in _OUT_STOCK:
+                return {"disponible": False, "prix": price, "erreur": None}
+
+    # 2) Repli : meta tagcommander product_stock ("produit indisponible" / "en stock")
+    mt = re.search(r'name="product_stock"[^>]*content="([^"]+)"', html, re.IGNORECASE)
+    if mt:
+        indispo = "indisponible" in mt.group(1).lower()
+        return {"disponible": not indispo, "prix": price, "erreur": None}
+
+    return {"disponible": None, "prix": price, "erreur": "disponibilite Darty introuvable"}
+
+
 # Table de routage des parsers
 PARSERS = {
     "parse_jsonld": parse_jsonld,
     "parse_amazon": parse_amazon,
     "parse_castorama": parse_castorama,
+    "parse_darty": parse_darty,
 }
 
 

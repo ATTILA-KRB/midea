@@ -49,7 +49,7 @@ SITES = [
         "nom": "Darty",
         "url": "https://www.darty.com/nav/achat/gros_electromenager/chauffage_climatisation/climatiseur/midea_mmcs-12hrn8-qrd0.html",
         "method": "brightdata",   # 403 en direct + stock geolocalise
-        "parser": "parse_jsonld",
+        "parser": "parse_darty",  # dispo en microdata itemprop, pas en JSON-LD
         "enabled": True,
     },
     {
