@@ -18,6 +18,14 @@ PRIX_CIBLE = 1000
 
 SITES = [
     {
+        # Revendeur officiel Midea en France (boutique WooCommerce)
+        "nom": "Optimea",
+        "url": "https://www.optimea.fr/product/climatiseur-split-mobile-midea/",
+        "method": "direct",
+        "parser": "parse_jsonld",  # a confirmer par diagnostic (WooCommerce)
+        "enabled": True,
+    },
+    {
         "nom": "Castorama",
         "url": "https://www.castorama.fr/climatiseur-portasplit-midea-reversible-3500w/8431312260509_CAFR.prd",
         "method": "direct",
