@@ -42,6 +42,8 @@ BRIGHTDATA_TOKEN = os.environ.get("BRIGHTDATA_TOKEN", "")
 BRIGHTDATA_ZONE = os.environ.get("BRIGHTDATA_ZONE", "")
 BRIGHTDATA_SUPERPROXY = os.environ.get("BRIGHTDATA_SUPERPROXY", "brd.superproxy.io:33335")
 TIMEOUT = 25
+# Le superproxy Web Unlocker est plus lent (rendu JS / anti-bot) : timeout dedie plus large
+BRIGHTDATA_TIMEOUT = int(os.environ.get("BRIGHTDATA_TIMEOUT", "90"))
 
 
 # --------------------------------------------------------------------------
@@ -76,7 +78,8 @@ def fetch_brightdata(url):
     proxy_url = f"http://{proxy_user}:{BRIGHTDATA_TOKEN}@{BRIGHTDATA_SUPERPROXY}"
     proxies = {"http": proxy_url, "https": proxy_url}
     # verify=False car Bright Data re-termine le TLS (cf. -k du curl officiel)
-    r = requests.get(url, headers=HEADERS, proxies=proxies, timeout=60, verify=False)
+    # timeout large : le Web Unlocker peut etre lent (rendu JS, anti-bot) sur certains sites
+    r = requests.get(url, headers=HEADERS, proxies=proxies, timeout=BRIGHTDATA_TIMEOUT, verify=False)
     if r.status_code != 200:
         raise RuntimeError(f"BrightData HTTP {r.status_code}: {r.text[:120]}")
     return r.text
