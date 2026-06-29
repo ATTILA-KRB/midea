@@ -1,54 +1,48 @@
 """
-Diagnostic TEMPORAIRE cible Castorama.
+Diagnostic TEMPORAIRE cible Castorama (v2) : contexte des marqueurs de stock.
 
-Le moniteur affiche "EN STOCK" alors que le produit est en realite indisponible :
-on inspecte la page pour comprendre ce que le parser lit a tort.
-
-Affiche :
-  - toutes les valeurs "availability" trouvees dans le JSON-LD
-  - le nombre de blocs JSON-LD et un apercu de chacun
-  - la presence de marqueurs texte de stock (rupture / indisponible / panier ...)
-
+La page contient a la fois "ajouter au panier" et "indisponible" : on extrait
+le contexte de chaque occurrence pour trouver un marqueur fiable d'indisponibilite.
 A supprimer apres analyse.
 """
 
 import re
-import json
 from config import SITES
 from connectors import get_html
 
 CASTO = next(s for s in SITES if s["nom"] == "Castorama")
 
+PHRASES = [
+    "non disponible", "indisponible", "rupture", "plus disponible",
+    "n'est plus", "victime de son succes", "bientot de retour",
+    "ajouter au panier", "ajouter au panierprix", "add to cart",
+    "disabled", "out_of_stock", "outofstock", "instock", "in_stock",
+]
+
+
+def contexts(html, phrase, n=2, width=70):
+    low = html.lower()
+    out, start = [], 0
+    while len(out) < n:
+        i = low.find(phrase, start)
+        if i == -1:
+            break
+        snippet = re.sub(r"\s+", " ", html[max(0, i - width): i + len(phrase) + width])
+        out.append(snippet)
+        start = i + len(phrase)
+    return out
+
 
 def main():
     html = get_html(CASTO)
     print(f"taille HTML : {len(html)}", flush=True)
-
-    # Tous les availability bruts
-    avails = re.findall(r'"availability"\s*:\s*"([^"]+)"', html)
-    print(f"availability trouves ({len(avails)}) : {avails}", flush=True)
-
-    # Marqueurs texte
     low = html.lower()
-    for m in ["rupture", "indisponible", "epuise", "épuisé", "ajouter au panier",
-              "retrait en magasin", "click & collect", "livraison",
-              "out of stock", "in stock", "non disponible", "stock epuise"]:
-        if m in low:
-            print(f"  marqueur present : '{m}'", flush=True)
-
-    # Apercu des blocs JSON-LD (tronques) pour voir la structure
-    blocks = re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>',
-                        html, re.DOTALL)
-    print(f"\nblocs JSON-LD : {len(blocks)}", flush=True)
-    for i, b in enumerate(blocks):
-        raw = b.strip()
-        try:
-            data = json.loads(raw)
-            t = data.get("@type") if isinstance(data, dict) else type(data).__name__
-            offers = json.dumps(data.get("offers")) if isinstance(data, dict) else ""
-            print(f"  [{i}] @type={t} offers={offers[:300]}", flush=True)
-        except Exception as e:
-            print(f"  [{i}] (JSON invalide: {str(e)[:60]}) apercu={raw[:200]}", flush=True)
+    for p in PHRASES:
+        c = low.count(p)
+        if c:
+            print(f"\n=== '{p}' x{c} ===", flush=True)
+            for s in contexts(html, p):
+                print(f"   …{s}…", flush=True)
 
 
 if __name__ == "__main__":
