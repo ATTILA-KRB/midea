@@ -8,8 +8,9 @@ services:
       INTERVALLE_MINUTES: "15"
 
       # --- Bright Data (sites proteges : Amazon, Darty, ManoMano, Leroy Merlin, Boulanger) ---
+      BRIGHTDATA_CUSTOMER: "${BRIGHTDATA_CUSTOMER}"
+      BRIGHTDATA_ZONE: "${BRIGHTDATA_ZONE}"
       BRIGHTDATA_TOKEN: "${BRIGHTDATA_TOKEN}"
-      BRIGHTDATA_ZONE: "${BRIGHTDATA_ZONE:-web_unlocker1}"
 
       # --- Alerte email (Resend) ---
       RESEND_API_KEY: "${RESEND_API_KEY}"

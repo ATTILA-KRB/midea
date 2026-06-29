@@ -3,7 +3,7 @@ Connecteurs : recuperation du HTML et lecture du stock pour chaque site.
 
 Deux modes d'acces :
   - direct     : requete HTTP simple avec en-tetes navigateur
-  - brightdata : passe par l'API Web Unlocker de Bright Data (contourne les blocages)
+  - brightdata : passe par le superproxy Web Unlocker de Bright Data (contourne les blocages)
 
 Deux parsers :
   - parse_jsonld : lit la balise schema.org JSON-LD (methode fiable, donnee propre)
@@ -18,6 +18,11 @@ import os
 import re
 import json
 import requests
+import urllib3
+
+# Bright Data (Web Unlocker) termine le TLS de son cote : on desactive donc
+# la verification du certificat pour ces requetes (equivaut au -k de curl).
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 HEADERS = {
     "User-Agent": (
@@ -29,8 +34,13 @@ HEADERS = {
 }
 
 # Identifiants Bright Data lus depuis les variables d'environnement (jamais en dur)
+#   BRIGHTDATA_CUSTOMER : identifiant de compte (ex: hl_xxxxxxxx)
+#   BRIGHTDATA_ZONE     : nom de la zone Web Unlocker (ex: mcp_unlocker)
+#   BRIGHTDATA_TOKEN    : mot de passe de la zone (champ "password" du superproxy)
+BRIGHTDATA_CUSTOMER = os.environ.get("BRIGHTDATA_CUSTOMER", "")
 BRIGHTDATA_TOKEN = os.environ.get("BRIGHTDATA_TOKEN", "")
-BRIGHTDATA_ZONE = os.environ.get("BRIGHTDATA_ZONE", "web_unlocker1")
+BRIGHTDATA_ZONE = os.environ.get("BRIGHTDATA_ZONE", "")
+BRIGHTDATA_SUPERPROXY = os.environ.get("BRIGHTDATA_SUPERPROXY", "brd.superproxy.io:33335")
 TIMEOUT = 25
 
 
@@ -48,23 +58,25 @@ def fetch_direct(url):
 
 def fetch_brightdata(url):
     """
-    Recupere le HTML via l'API Bright Data Web Unlocker.
-    Necessite BRIGHTDATA_TOKEN. Si absent, leve une exception explicite.
+    Recupere le HTML via le superproxy Bright Data Web Unlocker (mode proxy).
+
+    Construit l'identifiant proxy au format officiel :
+      brd-customer-<CUSTOMER>-zone-<ZONE> : <PASSWORD>
+    Necessite CUSTOMER + ZONE + TOKEN. Si l'un manque, leve une exception explicite.
     """
-    if not BRIGHTDATA_TOKEN:
-        raise RuntimeError("BRIGHTDATA_TOKEN manquant")
-    endpoint = "https://api.brightdata.com/request"
-    payload = {
-        "zone": BRIGHTDATA_ZONE,
-        "url": url,
-        "format": "raw",
-        "country": "fr",
-    }
-    headers = {
-        "Authorization": f"Bearer {BRIGHTDATA_TOKEN}",
-        "Content-Type": "application/json",
-    }
-    r = requests.post(endpoint, json=payload, headers=headers, timeout=60)
+    if not (BRIGHTDATA_CUSTOMER and BRIGHTDATA_ZONE and BRIGHTDATA_TOKEN):
+        manquants = [n for n, v in (
+            ("BRIGHTDATA_CUSTOMER", BRIGHTDATA_CUSTOMER),
+            ("BRIGHTDATA_ZONE", BRIGHTDATA_ZONE),
+            ("BRIGHTDATA_TOKEN", BRIGHTDATA_TOKEN),
+        ) if not v]
+        raise RuntimeError(f"identifiants Bright Data manquants: {', '.join(manquants)}")
+
+    proxy_user = f"brd-customer-{BRIGHTDATA_CUSTOMER}-zone-{BRIGHTDATA_ZONE}"
+    proxy_url = f"http://{proxy_user}:{BRIGHTDATA_TOKEN}@{BRIGHTDATA_SUPERPROXY}"
+    proxies = {"http": proxy_url, "https": proxy_url}
+    # verify=False car Bright Data re-termine le TLS (cf. -k du curl officiel)
+    r = requests.get(url, headers=HEADERS, proxies=proxies, timeout=60, verify=False)
     if r.status_code != 200:
         raise RuntimeError(f"BrightData HTTP {r.status_code}: {r.text[:120]}")
     return r.text

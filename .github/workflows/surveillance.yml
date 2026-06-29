@@ -52,11 +52,10 @@ jobs:
 
       - name: Executer un cycle de verification
         env:
-          # Token obligatoire pour debloquer les 5 sites proteges.
+          # Identifiants superproxy Bright Data (debloque les 5 sites proteges).
+          BRIGHTDATA_CUSTOMER: ${{ secrets.BRIGHTDATA_CUSTOMER }}
           BRIGHTDATA_TOKEN: ${{ secrets.BRIGHTDATA_TOKEN }}
-          # Valeurs avec repli : on n'injecte jamais une chaine vide qui
-          # ecraserait le defaut prevu dans le code.
-          BRIGHTDATA_ZONE: ${{ secrets.BRIGHTDATA_ZONE || 'web_unlocker1' }}
+          BRIGHTDATA_ZONE: ${{ secrets.BRIGHTDATA_ZONE }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ALERTE_FROM: ${{ secrets.ALERTE_FROM || 'onboarding@resend.dev' }}
           ALERTE_TO: ${{ secrets.ALERTE_TO }}
