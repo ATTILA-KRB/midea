@@ -1,0 +1,20 @@
+services:
+  portasplit-monitor:
+    build: .
+    container_name: portasplit-monitor
+    restart: unless-stopped
+    environment:
+      # --- Rythme de surveillance ---
+      INTERVALLE_MINUTES: "15"
+
+      # --- Bright Data (sites proteges : Amazon, Darty, ManoMano, Leroy Merlin, Boulanger) ---
+      BRIGHTDATA_TOKEN: "${BRIGHTDATA_TOKEN}"
+      BRIGHTDATA_ZONE: "${BRIGHTDATA_ZONE:-web_unlocker1}"
+
+      # --- Alerte email (Resend) ---
+      RESEND_API_KEY: "${RESEND_API_KEY}"
+      ALERTE_FROM: "${ALERTE_FROM:-onboarding@resend.dev}"
+      ALERTE_TO: "${ALERTE_TO}"
+    volumes:
+      # Persiste l'etat sur le NAS pour survivre aux redemarrages
+      - ./data:/data
