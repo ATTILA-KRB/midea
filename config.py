@@ -18,12 +18,16 @@ PRIX_CIBLE = 1000
 
 SITES = [
     {
-        # Revendeur officiel Midea en France (boutique WooCommerce)
+        # Revendeur officiel Midea en France (boutique WooCommerce).
+        # Desactive : Cloudflare en mode "sous attaque" renvoie 503 meme via
+        # Bright Data Web Unlocker (teste avec reessais). A reactiver si une
+        # methode plus robuste (Scraping Browser, rendu JS) est mise en place.
+        # NB : le meme produit est deja suivi via Leroy Merlin ("par Optimea").
         "nom": "Optimea",
         "url": "https://www.optimea.fr/product/climatiseur-split-mobile-midea/",
-        "method": "direct",
-        "parser": "parse_jsonld",  # a confirmer par diagnostic (WooCommerce)
-        "enabled": True,
+        "method": "brightdata",
+        "parser": "parse_jsonld",
+        "enabled": False,
     },
     {
         "nom": "Castorama",
