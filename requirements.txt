@@ -1,1 +1,5 @@
 requests==2.32.3
+# Pilotage du Bright Data Scraping Browser (Browser API) via CDP, pour les sites
+# a anti-bot tres agressif (ex: Optimea). connect_over_cdp ne telecharge aucun
+# navigateur local : seul le paquet est requis.
+playwright>=1.45

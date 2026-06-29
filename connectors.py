@@ -48,6 +48,15 @@ BRIGHTDATA_TIMEOUT = int(os.environ.get("BRIGHTDATA_TIMEOUT", "90"))
 # Nombre de tentatives Bright Data (sites a anti-bot agressif : 503 transitoire)
 BRIGHTDATA_TENTATIVES = int(os.environ.get("BRIGHTDATA_TENTATIVES", "3"))
 
+# Bright Data Browser API (Scraping Browser) : navigateur reel pilote par
+# Playwright via CDP. Pour les sites a anti-bot tres agressif (Cloudflare "sous
+# attaque") que le Web Unlocker ne franchit pas. Reutilise BRIGHTDATA_CUSTOMER.
+#   BRIGHTDATA_BROWSER_ZONE  : nom de la zone Browser API (ex: mcp_browser)
+#   BRIGHTDATA_BROWSER_TOKEN : mot de passe de cette zone
+BRIGHTDATA_BROWSER_ZONE = os.environ.get("BRIGHTDATA_BROWSER_ZONE", "mcp_browser")
+BRIGHTDATA_BROWSER_TOKEN = os.environ.get("BRIGHTDATA_BROWSER_TOKEN", "")
+BRIGHTDATA_BROWSER_HOST = os.environ.get("BRIGHTDATA_BROWSER_HOST", "brd.superproxy.io:9222")
+
 
 # --------------------------------------------------------------------------
 # Recuperation du HTML
@@ -99,10 +108,42 @@ def fetch_brightdata(url):
     raise RuntimeError(f"BrightData {derniere} (apres {BRIGHTDATA_TENTATIVES} tentatives)")
 
 
+def fetch_scraping_browser(url):
+    """
+    Recupere le HTML via le Bright Data Scraping Browser (Browser API) :
+    un vrai navigateur distant pilote par Playwright via CDP. Reservee aux sites
+    a anti-bot tres agressif (Cloudflare "sous attaque") que le Web Unlocker ne
+    franchit pas. Necessite le paquet playwright + CUSTOMER/BROWSER_ZONE/BROWSER_TOKEN.
+    """
+    if not (BRIGHTDATA_CUSTOMER and BRIGHTDATA_BROWSER_ZONE and BRIGHTDATA_BROWSER_TOKEN):
+        raise RuntimeError("identifiants Bright Data Browser manquants "
+                           "(CUSTOMER / BROWSER_ZONE / BROWSER_TOKEN)")
+    from playwright.sync_api import sync_playwright  # import paresseux : seulement si utilise
+
+    user = f"brd-customer-{BRIGHTDATA_CUSTOMER}-zone-{BRIGHTDATA_BROWSER_ZONE}"
+    endpoint = f"wss://{user}:{BRIGHTDATA_BROWSER_TOKEN}@{BRIGHTDATA_BROWSER_HOST}"
+    with sync_playwright() as p:
+        browser = p.chromium.connect_over_cdp(endpoint, timeout=120000)
+        try:
+            page = browser.new_page()
+            page.goto(url, timeout=120000, wait_until="domcontentloaded")
+            # Laisser le challenge anti-bot se resoudre et le contenu se rendre
+            try:
+                page.wait_for_load_state("networkidle", timeout=20000)
+            except Exception:
+                pass
+            return page.content()
+        finally:
+            browser.close()
+
+
 def get_html(site):
     """Choisit la methode d'acces selon la config du site."""
-    if site["method"] == "brightdata":
+    methode = site["method"]
+    if methode == "brightdata":
         return fetch_brightdata(site["url"])
+    if methode == "scraping_browser":
+        return fetch_scraping_browser(site["url"])
     return fetch_direct(site["url"])
 
 
