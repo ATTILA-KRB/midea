@@ -1,0 +1,65 @@
+name: Surveillance stock PortaSplit
+
+# Fait tourner le moniteur directement sur GitHub Actions, sans NAS.
+# Les cles sont lues depuis les "Secrets" du depot (Settings > Secrets and variables > Actions).
+#
+# IMPORTANT : les declenchements "schedule" ne fonctionnent QUE depuis la branche
+# par defaut (main). Ce fichier doit donc etre fusionne sur main pour que le cron
+# s'active. On peut toujours lancer manuellement via "Run workflow" (workflow_dispatch).
+
+on:
+  schedule:
+    # Toutes les 15 min. GitHub peut retarder les executions planifiees en periode
+    # de charge : considere ce rythme comme "au mieux toutes les ~15 min".
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+# Lecture seule : on ne commite rien, l'etat est garde dans le cache.
+permissions:
+  contents: read
+
+# Empeche deux cycles de tourner en meme temps (corromprait la logique d'etat).
+concurrency:
+  group: surveillance-portasplit
+  cancel-in-progress: false
+
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installer les dependances
+        run: pip install -r requirements.txt
+
+      # Restaure l'etat du cycle precedent. Cle unique par execution + restore-keys
+      # par prefixe : on recupere toujours le cache le plus recent, et on en
+      # sauvegarde un nouveau a la fin (motif officiel de mise a jour d'un cache).
+      - name: Restaurer l'etat precedent
+        uses: actions/cache@v4
+        with:
+          path: state.json
+          key: portasplit-state-${{ github.run_id }}
+          restore-keys: |
+            portasplit-state-
+
+      - name: Executer un cycle de verification
+        env:
+          # Token obligatoire pour debloquer les 5 sites proteges.
+          BRIGHTDATA_TOKEN: ${{ secrets.BRIGHTDATA_TOKEN }}
+          # Valeurs avec repli : on n'injecte jamais une chaine vide qui
+          # ecraserait le defaut prevu dans le code.
+          BRIGHTDATA_ZONE: ${{ secrets.BRIGHTDATA_ZONE || 'web_unlocker1' }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERTE_FROM: ${{ secrets.ALERTE_FROM || 'onboarding@resend.dev' }}
+          ALERTE_TO: ${{ secrets.ALERTE_TO }}
+          # Chemin absolu : evite l'ecueil os.makedirs("") si le chemin est relatif.
+          STATE_PATH: ${{ github.workspace }}/state.json
+        run: python main.py
