@@ -16,6 +16,7 @@ disponible=None signifie "etat indetermine" (erreur reseau, blocage) : on n'aler
 
 import os
 import re
+import time
 import json
 import requests
 import urllib3
@@ -44,6 +45,8 @@ BRIGHTDATA_SUPERPROXY = os.environ.get("BRIGHTDATA_SUPERPROXY", "brd.superproxy.
 TIMEOUT = 25
 # Le superproxy Web Unlocker est plus lent (rendu JS / anti-bot) : timeout dedie plus large
 BRIGHTDATA_TIMEOUT = int(os.environ.get("BRIGHTDATA_TIMEOUT", "90"))
+# Nombre de tentatives Bright Data (sites a anti-bot agressif : 503 transitoire)
+BRIGHTDATA_TENTATIVES = int(os.environ.get("BRIGHTDATA_TENTATIVES", "3"))
 
 
 # --------------------------------------------------------------------------
@@ -77,12 +80,23 @@ def fetch_brightdata(url):
     proxy_user = f"brd-customer-{BRIGHTDATA_CUSTOMER}-zone-{BRIGHTDATA_ZONE}"
     proxy_url = f"http://{proxy_user}:{BRIGHTDATA_TOKEN}@{BRIGHTDATA_SUPERPROXY}"
     proxies = {"http": proxy_url, "https": proxy_url}
-    # verify=False car Bright Data re-termine le TLS (cf. -k du curl officiel)
-    # timeout large : le Web Unlocker peut etre lent (rendu JS, anti-bot) sur certains sites
-    r = requests.get(url, headers=HEADERS, proxies=proxies, timeout=BRIGHTDATA_TIMEOUT, verify=False)
-    if r.status_code != 200:
-        raise RuntimeError(f"BrightData HTTP {r.status_code}: {r.text[:120]}")
-    return r.text
+
+    # Quelques tentatives : sur les sites a anti-bot agressif (Cloudflare), le
+    # Web Unlocker echoue parfois (503/timeout) avant de resoudre le challenge.
+    derniere = "?"
+    for tentative in range(BRIGHTDATA_TENTATIVES):
+        try:
+            # verify=False car Bright Data re-termine le TLS (cf. -k du curl officiel)
+            r = requests.get(url, headers=HEADERS, proxies=proxies,
+                             timeout=BRIGHTDATA_TIMEOUT, verify=False)
+            if r.status_code == 200:
+                return r.text
+            derniere = f"HTTP {r.status_code}"
+        except Exception as e:
+            derniere = str(e)[:80]
+        if tentative < BRIGHTDATA_TENTATIVES - 1:
+            time.sleep(3 * (tentative + 1))  # backoff : 3s, 6s, ...
+    raise RuntimeError(f"BrightData {derniere} (apres {BRIGHTDATA_TENTATIVES} tentatives)")
 
 
 def get_html(site):
