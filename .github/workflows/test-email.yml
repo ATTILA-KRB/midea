@@ -1,0 +1,33 @@
+name: Test email (temporaire)
+
+# Workflow TEMPORAIRE : envoie une vraie alerte de test via Resend pour verifier
+# la delivrabilite de bout en bout. Lancement manuel. A supprimer apres.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installer les dependances
+        run: pip install -r requirements.txt
+
+      - name: Envoyer un email de test
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERTE_FROM: ${{ secrets.ALERTE_FROM || 'onboarding@resend.dev' }}
+          ALERTE_TO: ${{ secrets.ALERTE_TO }}
+        run: python test_alerte.py
