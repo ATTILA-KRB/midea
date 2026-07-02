@@ -71,6 +71,23 @@ SITES = [
         "enabled": True,
     },
     {
+        # JSON-LD schema.org propre (availability + prix). 403 en direct.
+        "nom": "Fnac",
+        "url": "https://www.fnac.com/MIDEA-Climatiseur-Split-Mobile-Reversible-Froid-Chaud-3500W-12000BTU-WiFi-deshumidificateur-ventilateur-jusqu-a-40m2-kit-fenetre-inclus/a21457105/w-4",
+        "method": "brightdata",
+        "parser": "parse_jsonld",
+        "enabled": True,
+    },
+    {
+        # Petit specialiste climatisation (boutique CS-Cart), accessible en direct.
+        # JSON-LD availability + libelle "En stock" coherents au diagnostic du 02/07.
+        "nom": "hemmera",
+        "url": "https://www.hemmera.fr/climatiseur-portable-midea-mmcs-12hrn8-3-5-kw.-pompe-a-chaleur-r32-kit-inclus/",
+        "method": "direct",
+        "parser": "parse_jsonld",
+        "enabled": True,
+    },
+    {
         # Reference comme "Discontinued" le 28/06 : desactive par defaut.
         # A reactiver si Bricoman le reintroduit.
         "nom": "Bricoman",

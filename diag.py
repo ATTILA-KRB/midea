@@ -1,77 +1,43 @@
 """
-Diagnostic TEMPORAIRE multi-sites : Fnac, Rakuten, hemmera.fr.
+Diagnostic TEMPORAIRE cible Rakuten (marketplace).
 
-Pour chaque candidat :
-  1. tente l'acces direct, sinon Bright Data Web Unlocker
-  2. affiche les signaux de stock disponibles (JSON-LD, microdata, boutons, textes)
-
-Objectif : choisir la methode d'acces et le parser pour chaque nouveau site.
+La page n'a pas de JSON-LD availability : on cherche un signal fiable
+(bouton panier reel vs template, prix, nombre d'offres neuves).
 A supprimer apres analyse.
 """
 
 import re
-from connectors import fetch_direct, fetch_brightdata
+from connectors import fetch_direct
 
-CANDIDATS = [
-    {
-        "nom": "Fnac",
-        "url": "https://www.fnac.com/MIDEA-Climatiseur-Split-Mobile-Reversible-Froid-Chaud-3500W-12000BTU-WiFi-deshumidificateur-ventilateur-jusqu-a-40m2-kit-fenetre-inclus/a21457105/w-4",
-    },
-    {
-        "nom": "Rakuten",
-        "url": "https://fr.shopping.rakuten.com/offer/buy/13466164647/clim-reversible-optimea-mmcs-12hrn8-qrd0.html",
-    },
-    {
-        "nom": "hemmera",
-        "url": "https://www.hemmera.fr/climatiseur-portable-midea-mmcs-12hrn8-3-5-kw.-pompe-a-chaleur-r32-kit-inclus/",
-    },
-]
-
-PHRASES = [
-    "rupture", "indisponible", "epuise", "épuisé", "non disponible",
-    "ajouter au panier", "add to cart", "acheter", "disabled",
-    "outofstock", "out-of-stock", "out_of_stock", "instock", "in-stock",
-    "en stock", "sold out", "victime de son succes", "précommande",
-]
+URL = "https://fr.shopping.rakuten.com/offer/buy/13466164647/clim-reversible-optimea-mmcs-12hrn8-qrd0.html"
 
 
-def inspecte(html, nom):
-    print(f"  taille HTML : {len(html)}", flush=True)
-    m = re.search(r"<title[^>]*>(.*?)</title>", html, re.DOTALL | re.IGNORECASE)
-    print(f"  <title> : {(m.group(1).strip()[:130] if m else '(aucun)')}", flush=True)
-
-    avails = re.findall(r'"availability"\s*:\s*"([^"]+)"', html)
-    print(f"  availability JSON-LD ({len(avails)}) : {avails[:6]}", flush=True)
-
-    micro = re.findall(r'<(?:link|meta)[^>]*itemprop="availability"[^>]*>', html, re.IGNORECASE)
-    print(f"  microdata availability : {micro[:2]}", flush=True)
-
+def contexte(html, phrase, n=3, width=110):
     low = html.lower()
-    for p in PHRASES:
-        c = low.count(p)
-        if c:
-            i = low.find(p)
-            ctx = re.sub(r"\s+", " ", html[max(0, i - 55): i + len(p) + 55])
-            print(f"  '{p}' x{c} : …{ctx}…", flush=True)
+    out, start = [], 0
+    while len(out) < n:
+        i = low.find(phrase.lower(), start)
+        if i == -1:
+            break
+        out.append(re.sub(r"\s+", " ", html[max(0, i - width): i + len(phrase) + width]))
+        start = i + len(phrase)
+    return out
 
 
 def main():
-    for site in CANDIDATS:
-        print(f"\n########## {site['nom']} ##########", flush=True)
-        print(f"URL : {site['url']}", flush=True)
-        html = None
-        try:
-            html = fetch_direct(site["url"])
-            print("  acces : DIRECT OK", flush=True)
-        except Exception as e:
-            print(f"  direct echoue : {str(e)[:100]}", flush=True)
-            try:
-                html = fetch_brightdata(site["url"])
-                print("  acces : BRIGHTDATA OK", flush=True)
-            except Exception as e2:
-                print(f"  brightdata echoue : {str(e2)[:140]}", flush=True)
-        if html:
-            inspecte(html, site["nom"])
+    html = fetch_direct(URL)
+    print(f"taille HTML : {len(html)}", flush=True)
+
+    # Signaux candidats specifiques Rakuten
+    for p in ["addToCartBtn", "advertList", "buybox", "salePrice",
+              "advertPrice", "\"price\"", "nbAdverts", "aucune offre",
+              "voir les offres", "neuf des", "occasion des",
+              "productBuyBox", "prdBuy", "isSoldOut", "soldout"]:
+        occ = contexte(html, p)
+        if occ:
+            print(f"\n=== '{p}' x{len(occ)}+ ===", flush=True)
+            for s in occ:
+                print(f"   …{s}…", flush=True)
 
 
 if __name__ == "__main__":
