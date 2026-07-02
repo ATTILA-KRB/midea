@@ -88,6 +88,17 @@ SITES = [
         "enabled": True,
     },
     {
+        # Marketplace : la buybox (prix/stock) est rendue en JavaScript cote
+        # client (front_advertlistbuybox.js), aucun signal fiable dans le HTML
+        # brut (templates a zeros). Desactive pour eviter les fausses alertes.
+        # NB : les vendeurs y sont souvent Boulanger/Optimea, deja suivis.
+        "nom": "Rakuten",
+        "url": "https://fr.shopping.rakuten.com/offer/buy/13466164647/clim-reversible-optimea-mmcs-12hrn8-qrd0.html",
+        "method": "direct",
+        "parser": "parse_jsonld",
+        "enabled": False,
+    },
+    {
         # Reference comme "Discontinued" le 28/06 : desactive par defaut.
         # A reactiver si Bricoman le reintroduit.
         "nom": "Bricoman",
