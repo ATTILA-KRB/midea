@@ -1,0 +1,29 @@
+name: Diagnostic hemmera pre-commande (temporaire)
+
+# Workflow TEMPORAIRE : trouver le signal "disponible le <date>" sur hemmera.
+# Lancement manuel. A supprimer apres analyse.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installer les dependances
+        run: pip install -r requirements.txt
+
+      - name: Lancer le diagnostic
+        run: python diag.py
