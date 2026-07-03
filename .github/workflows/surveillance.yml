@@ -1,24 +1,28 @@
 name: Surveillance stock PortaSplit
 
-# Fait tourner le moniteur directement sur GitHub Actions, sans NAS.
-# Les cles sont lues depuis les "Secrets" du depot (Settings > Secrets and variables > Actions).
+# Surveillance quasi continue sur GitHub Actions.
 #
-# IMPORTANT : les declenchements "schedule" ne fonctionnent QUE depuis la branche
-# par defaut (main). Ce fichier doit donc etre fusionne sur main pour que le cron
-# s'active. On peut toujours lancer manuellement via "Run workflow" (workflow_dispatch).
+# GitHub n'honore pas les crons rapides (minimum 5 min, en pratique 1 a 3 h de
+# retard constate). On utilise donc un job long : boucle_actions.py scanne
+# toutes les ~2 min pendant ~58 min, puis le workflow SE RELANCE LUI-MEME
+# (etape d'auto-dispatch). Le cron ne sert plus que de filet de secours pour
+# redemarrer la chaine si elle casse (crash, maintenance GitHub...).
+#
+# La cadence par site (2 min direct / 10 min Bright Data / 60 min navigateur)
+# se regle dans config.py (champ "intervalle") pour maitriser les couts.
 
 on:
   schedule:
-    # Toutes les 15 min. GitHub peut retarder les executions planifiees en periode
-    # de charge : considere ce rythme comme "au mieux toutes les ~15 min".
-    - cron: "*/15 * * * *"
+    # Filet de secours uniquement : relance la chaine si elle est morte.
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
-# Lecture seule : on ne commite rien, l'etat est garde dans le cache.
 permissions:
   contents: read
+  actions: write   # necessaire a l'auto-relance (workflow_dispatch)
 
-# Empeche deux cycles de tourner en meme temps (corromprait la logique d'etat).
+# Une seule chaine a la fois : les declenchements en trop restent en attente
+# et fusionnent (GitHub ne garde qu'un seul run en attente par groupe).
 concurrency:
   group: surveillance-portasplit
   cancel-in-progress: false
@@ -26,7 +30,7 @@ concurrency:
 jobs:
   cycle:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 75
     steps:
       - name: Recuperer le code
         uses: actions/checkout@v4
@@ -50,9 +54,9 @@ jobs:
           restore-keys: |
             portasplit-state-
 
-      - name: Executer un cycle de verification
+      - name: Boucle de surveillance (~58 min, tick ~2 min)
         env:
-          # Identifiants superproxy Bright Data (debloque les 5 sites proteges).
+          # Identifiants superproxy Bright Data (debloque les sites proteges).
           BRIGHTDATA_CUSTOMER: ${{ secrets.BRIGHTDATA_CUSTOMER }}
           BRIGHTDATA_TOKEN: ${{ secrets.BRIGHTDATA_TOKEN }}
           BRIGHTDATA_ZONE: ${{ secrets.BRIGHTDATA_ZONE }}
@@ -64,4 +68,17 @@ jobs:
           ALERTE_TO: ${{ secrets.ALERTE_TO }}
           # Chemin absolu : evite l'ecueil os.makedirs("") si le chemin est relatif.
           STATE_PATH: ${{ github.workspace }}/state.json
-        run: python main.py
+        run: python boucle_actions.py
+
+      # Auto-relance : enchaine immediatement une nouvelle fenetre de 58 min.
+      # if: always() pour relancer meme si la boucle a plante.
+      - name: Relancer la surveillance
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/surveillance.yml/dispatches" \
+            -d '{"ref":"main"}'

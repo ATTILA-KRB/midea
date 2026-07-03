@@ -26,6 +26,7 @@ SITES = [
         "url": "https://www.optimea.fr/product/climatiseur-split-mobile-midea/",
         "method": "scraping_browser",
         "parser": "parse_woocommerce",
+        "intervalle": 60,   # minutes entre deux verifications de ce site
         "enabled": True,
     },
     {
@@ -33,6 +34,7 @@ SITES = [
         "url": "https://www.castorama.fr/climatiseur-portasplit-midea-reversible-3500w/8431312260509_CAFR.prd",
         "method": "direct",
         "parser": "parse_castorama",  # JSON-LD InStock code en dur : on lit l'etat du bouton panier
+        "intervalle": 2,   # minutes entre deux verifications de ce site
         "enabled": True,
     },
     {
@@ -40,6 +42,7 @@ SITES = [
         "url": "https://www.amazon.fr/dp/B0CY2YW8BT",
         "method": "brightdata",   # 200 en direct mais bannit vite : proxy recommande
         "parser": "parse_amazon",
+        "intervalle": 10,   # minutes entre deux verifications de ce site
         "enabled": True,
     },
     {
@@ -47,6 +50,7 @@ SITES = [
         "url": "https://www.leroymerlin.fr/produits/climatiseur-split-mobile-reversible-portasplit-midea-par-optimea-93857579.html",
         "method": "brightdata",   # 403 en direct
         "parser": "parse_jsonld",
+        "intervalle": 10,   # minutes entre deux verifications de ce site
         "enabled": True,
     },
     {
@@ -54,6 +58,7 @@ SITES = [
         "url": "https://www.manomano.fr/p/midea-climatiseur-split-mobile-reversible-froid-chaud-3500w12000btu-wifi-deshumidificateur-ventilateur-jusqua-40m2-kit-fenetre-inclus-83810402",
         "method": "brightdata",   # 403 en direct
         "parser": "parse_jsonld",
+        "intervalle": 10,   # minutes entre deux verifications de ce site
         "enabled": True,
     },
     {
@@ -61,6 +66,7 @@ SITES = [
         "url": "https://www.darty.com/nav/achat/gros_electromenager/chauffage_climatisation/climatiseur/midea_mmcs-12hrn8-qrd0.html",
         "method": "brightdata",   # 403 en direct + stock geolocalise
         "parser": "parse_darty",  # dispo en microdata itemprop, pas en JSON-LD
+        "intervalle": 10,   # minutes entre deux verifications de ce site
         "enabled": True,
     },
     {
@@ -68,6 +74,7 @@ SITES = [
         "url": "https://www.boulanger.com/ref/1216685",
         "method": "brightdata",   # 400 en direct
         "parser": "parse_jsonld",
+        "intervalle": 10,   # minutes entre deux verifications de ce site
         "enabled": True,
     },
     {
@@ -76,6 +83,7 @@ SITES = [
         "url": "https://www.fnac.com/MIDEA-Climatiseur-Split-Mobile-Reversible-Froid-Chaud-3500W-12000BTU-WiFi-deshumidificateur-ventilateur-jusqu-a-40m2-kit-fenetre-inclus/a21457105/w-4",
         "method": "brightdata",
         "parser": "parse_jsonld",
+        "intervalle": 10,   # minutes entre deux verifications de ce site
         "enabled": True,
     },
     {
@@ -86,6 +94,7 @@ SITES = [
         "url": "https://www.hemmera.fr/climatiseur-portable-midea-mmcs-12hrn8-3-5-kw.-pompe-a-chaleur-r32-kit-inclus/",
         "method": "direct",
         "parser": "parse_hemmera",
+        "intervalle": 2,   # minutes entre deux verifications de ce site
         "enabled": True,
     },
     {
@@ -97,6 +106,7 @@ SITES = [
         "url": "https://fr.shopping.rakuten.com/offer/buy/13466164647/clim-reversible-optimea-mmcs-12hrn8-qrd0.html",
         "method": "direct",
         "parser": "parse_jsonld",
+        "intervalle": 2,   # minutes entre deux verifications de ce site
         "enabled": False,
     },
     {
@@ -106,6 +116,7 @@ SITES = [
         "url": "https://www.bricoman.fr/produits/climatiseur-mobile-reversible-portasplit-midea-25088072.html",
         "method": "direct",
         "parser": "parse_jsonld",
+        "intervalle": 2,   # minutes entre deux verifications de ce site
         "enabled": False,
     },
 ]

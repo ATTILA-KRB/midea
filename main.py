@@ -32,13 +32,14 @@ def _log(msg):
     print(f"[{horodatage}] {msg}", flush=True)
 
 
-def interroger_sites():
-    """Lance tous les sites actifs en parallele. Renvoie la liste des resultats."""
-    actifs = [s for s in SITES if s.get("enabled", True)]
+def interroger_sites(sites):
+    """Interroge les sites donnes en parallele. Renvoie la liste des resultats."""
+    if not sites:
+        return []
     resultats = []
-    with ThreadPoolExecutor(max_workers=min(8, len(actifs))) as executor:
+    with ThreadPoolExecutor(max_workers=min(8, len(sites))) as executor:
         futures = {}
-        for site in actifs:
+        for site in sites:
             # Petit delai aleatoire pour ne pas frapper tous les sites en meme temps
             time.sleep(random.uniform(0.1, 0.5))
             futures[executor.submit(check_site, site)] = site["nom"]
@@ -46,6 +47,34 @@ def interroger_sites():
             resultats.append(fut.result())
     # Tri par nom pour un affichage stable
     return sorted(resultats, key=lambda r: r["nom"])
+
+
+def _sites_a_verifier(etat, maintenant):
+    """
+    Renvoie les sites actifs dont la cadence est echue.
+
+    Chaque site peut definir 'intervalle' (minutes, defaut 2). La derniere
+    verification est memorisee dans l'etat sous la cle speciale
+    '_derniere_verif' pour que chaque site suive sa propre cadence :
+    utile pour maitriser le cout Bright Data en boucle rapide.
+    """
+    verifs = etat.get("_derniere_verif", {})
+    dus = []
+    for site in SITES:
+        if not site.get("enabled", True):
+            continue
+        intervalle = site.get("intervalle", 2) * 60
+        derniere = verifs.get(site["nom"])
+        if derniere is None:
+            dus.append(site)
+            continue
+        try:
+            ecoule = (maintenant - datetime.fromisoformat(derniere)).total_seconds()
+        except ValueError:
+            ecoule = intervalle
+        if ecoule >= intervalle:
+            dus.append(site)
+    return dus
 
 
 def afficher_resultats(resultats):
@@ -63,10 +92,14 @@ def afficher_resultats(resultats):
 
 
 def cycle():
-    """Execute un cycle complet de verification."""
-    _log(f"--- Cycle de verification : {PRODUIT} ---")
+    """Execute un cycle de verification des sites dont la cadence est echue."""
     etat_precedent = charger_etat()
-    resultats = interroger_sites()
+    maintenant = datetime.now()
+    dus = _sites_a_verifier(etat_precedent, maintenant)
+    if not dus:
+        return []
+    _log(f"--- Cycle de verification : {PRODUIT} ({len(dus)} site(s)) ---")
+    resultats = interroger_sites(dus)
     afficher_resultats(resultats)
 
     alertes, retours, nouvel_etat = detecter_transitions(resultats, etat_precedent)
@@ -80,6 +113,12 @@ def cycle():
         envoyer_alerte(alertes, PRIX_CIBLE)
     else:
         _log("  aucune nouvelle disponibilite")
+
+    # Memorise la date de verification des sites interroges (cadence par site)
+    verifs = dict(etat_precedent.get("_derniere_verif", {}))
+    for site in dus:
+        verifs[site["nom"]] = maintenant.isoformat(timespec="seconds")
+    nouvel_etat["_derniere_verif"] = verifs
 
     sauver_etat(nouvel_etat)
     _log("--- Fin du cycle ---")
