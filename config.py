@@ -80,11 +80,12 @@ SITES = [
     },
     {
         # Petit specialiste climatisation (boutique CS-Cart), accessible en direct.
-        # JSON-LD availability + libelle "En stock" coherents au diagnostic du 02/07.
+        # Attention : "En stock" peut etre affiche alors que l'achat est bloque
+        # jusqu'a une date (pre-commande) -> parser dedie qui detecte ce blocage.
         "nom": "hemmera",
         "url": "https://www.hemmera.fr/climatiseur-portable-midea-mmcs-12hrn8-3-5-kw.-pompe-a-chaleur-r32-kit-inclus/",
         "method": "direct",
-        "parser": "parse_jsonld",
+        "parser": "parse_hemmera",
         "enabled": True,
     },
     {
