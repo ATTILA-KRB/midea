@@ -237,18 +237,21 @@ def parse_jsonld(html, site):
 def parse_amazon(html, site):
     """
     Parser specifique Amazon FR.
-    'actuellement indisponible' = rupture. Sinon, presence du bouton d'achat = dispo.
+    'actuellement indisponible' = rupture. Sinon, presence du VRAI bouton
+    d'achat (id="add-to-cart-button" / id="buy-now-button") = dispo.
+    Verifie le 03/07 sur une offre eclair reelle (754 EUR, partie en ~2h).
     """
     txt = html.lower()
-    if "actuellement indisponible" in txt or "temporairement en rupture" in txt:
+    if ("actuellement indisponible" in txt or "temporairement en rupture" in txt
+            or "nous ne savons pas quand cet article sera de nouveau" in txt):
         return {"disponible": False, "prix": None, "erreur": None}
     # Prix Amazon : bloc a-price-whole
     price = None
     m = re.search(r'a-price-whole">([0-9\s.,]+)<', html)
     if m:
         price = _to_float(m.group(1).strip().rstrip(".,"))
-    # Presence d'un bouton d'achat actif
-    if "add-to-cart-button" in txt or "buy-now-button" in txt or "buybox" in txt:
+    # Vrai bouton d'achat (id exact, pas une simple occurrence de texte)
+    if re.search(r'id="(?:add-to-cart-button|buy-now-button)"', html):
         return {"disponible": True, "prix": price, "erreur": None}
     return {"disponible": None, "prix": price, "erreur": "etat Amazon indetermine"}
 
