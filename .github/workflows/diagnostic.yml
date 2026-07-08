@@ -33,4 +33,7 @@ jobs:
           BRIGHTDATA_ZONE: ${{ secrets.BRIGHTDATA_ZONE }}
           BRIGHTDATA_BROWSER_ZONE: ${{ secrets.BRIGHTDATA_BROWSER_ZONE || 'mcp_browser' }}
           BRIGHTDATA_BROWSER_TOKEN: ${{ secrets.BRIGHTDATA_BROWSER_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERTE_FROM: ${{ secrets.ALERTE_FROM || 'onboarding@resend.dev' }}
+          ALERTE_TO: ${{ secrets.ALERTE_TO }}
         run: python diag.py
