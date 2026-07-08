@@ -27,6 +27,7 @@ jobs:
 
       - name: Tester les cles
         env:
+          BRIGHTDATA_API_KEY: ${{ secrets.BRIGHTDATA_API_KEY }}
           BRIGHTDATA_CUSTOMER: ${{ secrets.BRIGHTDATA_CUSTOMER }}
           BRIGHTDATA_TOKEN: ${{ secrets.BRIGHTDATA_TOKEN }}
           BRIGHTDATA_ZONE: ${{ secrets.BRIGHTDATA_ZONE }}

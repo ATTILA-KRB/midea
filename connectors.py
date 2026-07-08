@@ -41,6 +41,9 @@ HEADERS = {
 BRIGHTDATA_CUSTOMER = os.environ.get("BRIGHTDATA_CUSTOMER", "")
 BRIGHTDATA_TOKEN = os.environ.get("BRIGHTDATA_TOKEN", "")
 BRIGHTDATA_ZONE = os.environ.get("BRIGHTDATA_ZONE", "")
+# Cle API du compte (methode officielle "API request"). Si presente, elle est
+# utilisee en priorite ; sinon on passe par le superproxy (mot de passe de zone).
+BRIGHTDATA_API_KEY = os.environ.get("BRIGHTDATA_API_KEY", "")
 BRIGHTDATA_SUPERPROXY = os.environ.get("BRIGHTDATA_SUPERPROXY", "brd.superproxy.io:33335")
 TIMEOUT = 25
 # Le superproxy Web Unlocker est plus lent (rendu JS / anti-bot) : timeout dedie plus large
@@ -70,14 +73,47 @@ def fetch_direct(url):
     return r.text
 
 
+def _fetch_brightdata_api(url):
+    """
+    Recupere le HTML via l'API officielle Bright Data (api.brightdata.com/request)
+    avec la cle API du compte (Authorization: Bearer). Les erreurs applicatives
+    arrivent parfois en HTTP 200 avec un corps vide et des en-tetes x-brd-*.
+    """
+    endpoint = "https://api.brightdata.com/request"
+    payload = {"zone": BRIGHTDATA_ZONE or "mcp_unlocker", "url": url,
+               "format": "raw", "country": "fr"}
+    headers = {"Authorization": f"Bearer {BRIGHTDATA_API_KEY}",
+               "Content-Type": "application/json"}
+    derniere = "?"
+    for tentative in range(BRIGHTDATA_TENTATIVES):
+        try:
+            r = requests.post(endpoint, json=payload, headers=headers,
+                              timeout=BRIGHTDATA_TIMEOUT)
+            erreur_brd = r.headers.get("x-brd-error")
+            if r.status_code == 200 and r.text and not erreur_brd:
+                return r.text
+            if erreur_brd:
+                derniere = f"x-brd: {r.headers.get('x-brd-err-msg', erreur_brd)[:150]}"
+            else:
+                derniere = f"HTTP {r.status_code}: {r.text[:100]}"
+        except Exception as e:
+            derniere = str(e)[:300]
+        if tentative < BRIGHTDATA_TENTATIVES - 1:
+            time.sleep(3 * (tentative + 1))
+    raise RuntimeError(f"BrightData API {derniere} (apres {BRIGHTDATA_TENTATIVES} tentatives)")
+
+
 def fetch_brightdata(url):
     """
-    Recupere le HTML via le superproxy Bright Data Web Unlocker (mode proxy).
+    Recupere le HTML via Bright Data Web Unlocker.
 
-    Construit l'identifiant proxy au format officiel :
-      brd-customer-<CUSTOMER>-zone-<ZONE> : <PASSWORD>
-    Necessite CUSTOMER + ZONE + TOKEN. Si l'un manque, leve une exception explicite.
+    Deux modes :
+      - BRIGHTDATA_API_KEY presente -> API officielle (Bearer), prioritaire
+      - sinon superproxy avec l'identifiant brd-customer-<CUSTOMER>-zone-<ZONE>
+        et le mot de passe de zone (BRIGHTDATA_TOKEN)
     """
+    if BRIGHTDATA_API_KEY:
+        return _fetch_brightdata_api(url)
     if not (BRIGHTDATA_CUSTOMER and BRIGHTDATA_ZONE and BRIGHTDATA_TOKEN):
         manquants = [n for n, v in (
             ("BRIGHTDATA_CUSTOMER", BRIGHTDATA_CUSTOMER),

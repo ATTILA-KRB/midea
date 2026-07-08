@@ -56,7 +56,10 @@ jobs:
 
       - name: Boucle de surveillance (~58 min, tick ~2 min)
         env:
-          # Identifiants superproxy Bright Data (debloque les sites proteges).
+          # Identifiants Bright Data (debloque les sites proteges).
+          # BRIGHTDATA_API_KEY (cle API du compte) est prioritaire ; a defaut,
+          # superproxy avec le mot de passe de zone (BRIGHTDATA_TOKEN).
+          BRIGHTDATA_API_KEY: ${{ secrets.BRIGHTDATA_API_KEY }}
           BRIGHTDATA_CUSTOMER: ${{ secrets.BRIGHTDATA_CUSTOMER }}
           BRIGHTDATA_TOKEN: ${{ secrets.BRIGHTDATA_TOKEN }}
           BRIGHTDATA_ZONE: ${{ secrets.BRIGHTDATA_ZONE }}
