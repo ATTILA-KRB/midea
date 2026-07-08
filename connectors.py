@@ -390,33 +390,30 @@ def parse_hemmera(html, site):
     """
     _, price = _extract_jsonld_offers(html)
 
-    # Identifiant CS-Cart du produit principal (premier champ de stock de la page)
-    m = re.search(r'id="in_stock_info_(\d+)"', html)
-    if not m:
-        return {"disponible": None, "prix": price,
-                "erreur": "champ stock hemmera introuvable"}
-    pid = m.group(1)
-
-    # Achat bloque jusqu'a une date (pre-commande) pour CE produit
+    # 1) Achat bloque (pre-commande) du produit PRINCIPAL : son bloc coming-soon
+    #    se termine par <!--add_to_cart_update_<id numerique pur>--> ; ceux des
+    #    produits de la sidebar ont un id suffixe 'scr' et ne matchent pas.
+    #    (Le champ "Disponible: En stock" a disparu de la page le 08/07 : on ne
+    #    peut plus s'appuyer dessus comme signal obligatoire.)
     coming = re.search(
-        r'ty-product-coming-soon[^>]*>(.*?)</div>\s*<!--add_to_cart_update_'
-        + re.escape(pid) + r'-->',
+        r'ty-product-coming-soon[^>]*>(.*?)</div>\s*<!--add_to_cart_update_\d+-->',
         html, re.DOTALL,
     )
     if coming:
         return {"disponible": False, "prix": price, "erreur": None}
 
-    # Sinon on lit le libelle du champ de stock du produit principal
-    label = re.search(
-        r'id="in_stock_info_' + re.escape(pid) + r'"[^>]*>(.*?)</span>',
-        html, re.DOTALL,
-    )
+    # 2) Champ de stock CS-Cart, s'il est present
+    label = re.search(r'id="in_stock_info_\d+"[^>]*>(.*?)</span>', html, re.DOTALL)
     if label:
         txt = label.group(1).lower()
         if "en stock" in txt:
             return {"disponible": True, "prix": price, "erreur": None}
         if "rupture" in txt or "puis" in txt:
             return {"disponible": False, "prix": price, "erreur": None}
+
+    # 3) Vrai bouton d'achat CS-Cart du produit principal
+    if re.search(r'id="button_cart_\d+"', html):
+        return {"disponible": True, "prix": price, "erreur": None}
 
     return {"disponible": None, "prix": price,
             "erreur": "etat hemmera indetermine"}
