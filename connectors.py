@@ -102,7 +102,7 @@ def fetch_brightdata(url):
                 return r.text
             derniere = f"HTTP {r.status_code}"
         except Exception as e:
-            derniere = str(e)[:80]
+            derniere = str(e)[:300]
         if tentative < BRIGHTDATA_TENTATIVES - 1:
             time.sleep(3 * (tentative + 1))  # backoff : 3s, 6s, ...
     raise RuntimeError(f"BrightData {derniere} (apres {BRIGHTDATA_TENTATIVES} tentatives)")
