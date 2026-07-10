@@ -1,0 +1,39 @@
+name: Check complet 9 sites (temporaire)
+
+# Workflow TEMPORAIRE : un cycle complet immediat sur les 9 sites, sans cache
+# d'etat (tous les sites sont interroges). Lancement manuel. A supprimer apres.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installer les dependances
+        run: pip install -r requirements.txt
+
+      - name: Cycle complet
+        env:
+          BRIGHTDATA_API_KEY: ${{ secrets.BRIGHTDATA_API_KEY }}
+          BRIGHTDATA_CUSTOMER: ${{ secrets.BRIGHTDATA_CUSTOMER }}
+          BRIGHTDATA_TOKEN: ${{ secrets.BRIGHTDATA_TOKEN }}
+          BRIGHTDATA_ZONE: ${{ secrets.BRIGHTDATA_ZONE }}
+          BRIGHTDATA_BROWSER_ZONE: ${{ secrets.BRIGHTDATA_BROWSER_ZONE || 'mcp_browser' }}
+          BRIGHTDATA_BROWSER_TOKEN: ${{ secrets.BRIGHTDATA_BROWSER_TOKEN }}
+          # Pas de RESEND/ALERTE_TO : ce check ne doit envoyer AUCUN email
+          # (etat vierge -> un site en stock declencherait une "transition").
+          STATE_PATH: ${{ github.workspace }}/state-check.json
+        run: python main.py
