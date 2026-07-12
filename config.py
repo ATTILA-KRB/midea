@@ -30,6 +30,15 @@ SITES = [
         "enabled": True,
     },
     {
+        # Offre reconditionnee officielle Optimea (fiche distincte, ~799 EUR).
+        "nom": "Optimea Seconde Vie",
+        "url": "https://www.optimea.fr/product/seconde-vie-climatiseur-split-mobile-midea-silencieux-reversible-sans-installation/",
+        "method": "scraping_browser",
+        "parser": "parse_woocommerce",
+        "intervalle": 60,   # minutes entre deux verifications de ce site
+        "enabled": True,
+    },
+    {
         "nom": "Castorama",
         "url": "https://www.castorama.fr/climatiseur-portasplit-midea-reversible-3500w/8431312260509_CAFR.prd",
         "method": "direct",
